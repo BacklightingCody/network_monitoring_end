@@ -1,17 +1,33 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { DevicesModule } from '@/devices/devices.module';
 import { TrafficModule } from '@/traffic/traffic.module';
 import { LogsModule } from '@/logs/logs.module';
 import { PerformanceInterceptor } from '@/common/interceptors/performance.interceptor';
-import {AllExceptionsFilter} from '@/common/filters/all-exceptions.filter';
+import { AllExceptionsFilter } from '@/common/filters/all-exceptions.filter';
 import { ResponseInterceptor } from '@/common/interceptors/response.interceptor';
 import { HttpExceptionFilter } from '@/common/filters/http-exception.filter';
 import { ValidationPipe } from '@/common/pipes/validation.pipe';
 import { APP_INTERCEPTOR, APP_FILTER, APP_PIPE } from '@nestjs/core';
 import { MetricsModule } from '@/metrics/metrics.module';
-
+const envFiles = ['.env'];
+export const IS_DEV = process.env.RUNNING_ENV !== 'prod';
+if (IS_DEV) {
+  envFiles.unshift('.env.dev');
+}
+//  else {
+//   envFilePath.unshift('.env.prod');
+// }
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      envFilePath: envFiles, // 使用动态选择的环境文件
+      isGlobal: true, // 使 ConfigService 全局可用
+      load: [() => ({ // 可选：自定义加载逻辑
+        PORT: process.env.PORT ?? 5000,
+        FRONT_URL: process.env.FRONT_URL || 'http://localhost:5173',
+      })],
+    }),
     DevicesModule,  // 引入 Devices 模块
     TrafficModule,  // 引入 Traffic 模块
     LogsModule,   // 引入 Logs 模块
@@ -40,4 +56,4 @@ import { MetricsModule } from '@/metrics/metrics.module';
     }
   ],
 })
-export class AppModule {}
+export class AppModule { }
