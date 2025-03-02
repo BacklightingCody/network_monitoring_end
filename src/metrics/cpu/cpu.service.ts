@@ -55,7 +55,7 @@ export class CpuService {
   }
 
   async getProcessorPerformance() {
-    const query = 'windows_cpu_processor_performance_total';
+    const query = '100 - (avg(rate(windows_cpu_time_total{mode="idle"}[1m])) by (core) * 100)';
     const result = await this.queryPrometheus(query);
     return result;
   }

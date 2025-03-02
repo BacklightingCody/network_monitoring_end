@@ -16,6 +16,15 @@ import { RuntimeService } from './runtime/runtime.service';
 
 @Module({
   providers: [MetricsService, CpuService, MemoryService, DiskService, NetworkService, SystemService, RuntimeService],
-  controllers: [MetricsController, CpuController, MemoryController, DiskController, NetworkController, SystemController, RuntimeController]
+  controllers: [MetricsController, CpuController, MemoryController, DiskController, NetworkController, SystemController, RuntimeController],
+  exports: [
+    MetricsService,
+    CpuService,
+    MemoryService,
+    DiskService,
+    NetworkService,
+    SystemService,
+    RuntimeService
+  ]
 })
-export class MetricsModule {}
+export class MetricsModule { }
