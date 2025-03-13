@@ -109,4 +109,77 @@ export class SystemController {
   getCollectorDuration() {
     return this.systemService.getCollectorDuration();
   }
+
+  @Get('all')
+  async getAllSystemMetrics() {
+    const [
+      hostname,
+      systemInfo,
+      processes,
+      processesLimit,
+      memoryFree,
+      memoryLimit,
+      systemTime,
+      timezone,
+      users,
+      bootTime,
+      cpuQueueLength,
+      contextSwitches,
+      exceptionDispatches,
+      systemCalls,
+      threads,
+      logicalProcessors,
+      physicalMemory,
+      diskIO,
+      services,
+      serviceState,
+      collectorDuration
+    ] = await Promise.all([
+      this.systemService.getHostname(),
+      this.systemService.getSystemInfo(),
+      this.systemService.getProcesses(),
+      this.systemService.getProcessesLimit(),
+      this.systemService.getMemoryFree(),
+      this.systemService.getMemoryLimit(),
+      this.systemService.getSystemTime(),
+      this.systemService.getTimezone(),
+      this.systemService.getUsers(),
+      this.systemService.getBootTime(),
+      this.systemService.getCpuQueueLength(),
+      this.systemService.getContextSwitches(),
+      this.systemService.getExceptionDispatches(),
+      this.systemService.getSystemCalls(),
+      this.systemService.getThreads(),
+      this.systemService.getLogicalProcessors(),
+      this.systemService.getPhysicalMemory(),
+      this.systemService.getDiskIO(),
+      this.systemService.getServices(),
+      this.systemService.getServiceState(),
+      this.systemService.getCollectorDuration()
+    ]);
+
+    return {
+      hostname,
+      systemInfo,
+      processes,
+      processesLimit,
+      memoryFree,
+      memoryLimit,
+      systemTime,
+      timezone,
+      users,
+      bootTime,
+      cpuQueueLength,
+      contextSwitches,
+      exceptionDispatches,
+      systemCalls,
+      threads,
+      logicalProcessors,
+      physicalMemory,
+      diskIO,
+      services,
+      serviceState,
+      collectorDuration
+    };
+  }
 }

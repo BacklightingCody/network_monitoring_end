@@ -5,6 +5,46 @@ import { DiskService } from './disk.service';
 export class DiskController {
   constructor(private readonly diskService: DiskService) {}
 
+  @Get('all')
+  async getAllDiskMetrics() {
+    const [
+      avgReadRequestsQueued,
+      avgWriteRequestsQueued,
+      freeBytes,
+      idleSeconds,
+      readBytesTotal,
+      readLatencySeconds,
+      readSeconds,
+      writeBytesTotal,
+      writeLatencySeconds,
+      writeSeconds
+    ] = await Promise.all([
+      this.diskService.getAvgReadRequestsQueued(),
+      this.diskService.getAvgWriteRequestsQueued(),
+      this.diskService.getFreeBytes(),
+      this.diskService.getIdleSeconds(),
+      this.diskService.getReadBytesTotal(),
+      this.diskService.getReadLatencySeconds(),
+      this.diskService.getReadSeconds(),
+      this.diskService.getWriteBytesTotal(),
+      this.diskService.getWriteLatencySeconds(),
+      this.diskService.getWriteSeconds()
+    ]);
+
+    return {
+      avgReadRequestsQueued,
+      avgWriteRequestsQueued,
+      freeBytes,
+      idleSeconds,
+      readBytesTotal,
+      readLatencySeconds,
+      readSeconds,
+      writeBytesTotal,
+      writeLatencySeconds,
+      writeSeconds
+    };
+  }
+
   @Get('avg-read-requests-queued')
   getAvgReadRequestsQueued() {
     return this.diskService.getAvgReadRequestsQueued();

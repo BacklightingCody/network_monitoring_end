@@ -58,4 +58,44 @@ export class CpuController {
   getCpuTime() {
     return this.cpuService.getCpuTime();
   }
+
+  @Get('all')
+  async getAllCpuMetrics() {
+    const [
+      clockInterrupts,
+      coreFrequency,
+      cpuCState,
+      dpcs,
+      interrupts,
+      idleBreakEvents,
+      logicalProcessor,
+      processorPerformance,
+      processorUtility,
+      cpuTime
+    ] = await Promise.all([
+      this.cpuService.getClockInterrupts(),
+      this.cpuService.getCoreFrequency(),
+      this.cpuService.getCpuCState(),
+      this.cpuService.getDpcs(),
+      this.cpuService.getInterrupts(),
+      this.cpuService.getIdleBreakEvents(),
+      this.cpuService.getLogicalProcessorCount(),
+      this.cpuService.getProcessorPerformance(),
+      this.cpuService.getProcessorUtility(),
+      this.cpuService.getCpuTime()
+    ]);
+
+    return {
+      clockInterrupts,
+      coreFrequency,
+      cpuCState,
+      dpcs,
+      interrupts,
+      idleBreakEvents,
+      logicalProcessor,
+      processorPerformance,
+      processorUtility,
+      cpuTime
+    };
+  }
 }

@@ -74,4 +74,56 @@ export class NetworkController {
   getPacketsReceivedUnknown() {
     return this.networkService.getPacketsReceivedUnknown();
   }
+
+  @Get('all')
+  async getAllNetworkMetrics() {
+    const [
+      bytesReceived,
+      bytesSent,
+      bytesTotal,
+      currentBandwidth,
+      outputQueueLength,
+      packetsReceived,
+      packetsSent,
+      packetsTotal,
+      nicAddressInfo,
+      packetsOutboundErrors,
+      packetsReceivedErrors,
+      packetsReceivedDiscarded,
+      packetsOutboundDiscarded,
+      packetsReceivedUnknown
+    ] = await Promise.all([
+      this.networkService.getBytesReceived(),
+      this.networkService.getBytesSent(),
+      this.networkService.getBytesTotal(),
+      this.networkService.getCurrentBandwidth(),
+      this.networkService.getOutputQueueLength(),
+      this.networkService.getPacketsReceived(),
+      this.networkService.getPacketsSent(),
+      this.networkService.getPacketsTotal(),
+      this.networkService.getNicAddressInfo(),
+      this.networkService.getPacketsOutboundErrors(),
+      this.networkService.getPacketsReceivedErrors(),
+      this.networkService.getPacketsReceivedDiscarded(),
+      this.networkService.getPacketsOutboundDiscarded(),
+      this.networkService.getPacketsReceivedUnknown()
+    ]);
+
+    return {
+      bytesReceived,
+      bytesSent,
+      bytesTotal,
+      currentBandwidth,
+      outputQueueLength,
+      packetsReceived,
+      packetsSent,
+      packetsTotal,
+      nicAddressInfo,
+      packetsOutboundErrors,
+      packetsReceivedErrors,
+      packetsReceivedDiscarded,
+      packetsOutboundDiscarded,
+      packetsReceivedUnknown
+    };
+  }
 }

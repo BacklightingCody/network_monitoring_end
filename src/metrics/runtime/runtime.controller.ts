@@ -5,6 +5,31 @@ import { RuntimeService } from './runtime.service';
 export class RuntimeController {
   constructor(private readonly runtimeService: RuntimeService) {}
 
+  @Get('all')
+  async getAllRuntimeMetrics() {
+    const [
+      goBuildInfo,
+      goGcMetrics,
+      goMemoryMetrics,
+      goGoroutines,
+      goInfo
+    ] = await Promise.all([
+      this.runtimeService.getGoBuildInfo(),
+      this.runtimeService.getGoGcMetrics(),
+      this.runtimeService.getGoMemoryMetrics(),
+      this.runtimeService.getGoGoroutines(),
+      this.runtimeService.getGoInfo()
+    ]);
+
+    return {
+      goBuildInfo,
+      goGcMetrics,
+      goMemoryMetrics,
+      goGoroutines,
+      goInfo
+    };
+  }
+
   @Get('go-build')
   getGoBuildInfo() {
     return this.runtimeService.getGoBuildInfo();
