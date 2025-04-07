@@ -1,0 +1,34 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Packet {
+  id              Int      @id @default(autoincrement())
+  timestamp       DateTime // frame.time
+  sourceMac       String?  // eth.src，可为空
+  destinationMac  String?  // eth.dst，可为空
+  sourceIp        String   // ip.src
+  destinationIp   String   // ip.dst
+  sourcePort      Int?     // tcp.srcport 或 udp.srcport，可为空
+  destinationPort Int?     // tcp.dstport 或 udp.dstport，可为空
+  protocol        String   // ip.proto 或 frame.protocols
+  length          Int      // frame.len
+  tcpFlags        String?  // tcp.flags，可为空
+  frameNumber     Int?     // frame.number，可为空
+
+  trafficAnalysis TrafficAnalysis[] @relation("PacketToTrafficAnalysis")
+}
+
+model TrafficAnalysis {
+  id              Int      @id @default(autoincrement())
+  packetId        Int
+  analysisResult  String
+  analysisDate    DateTime @default(now())
+
+  packet          Packet   @relation("PacketToTrafficAnalysis", fields: [packetId], references: [id])
+}
