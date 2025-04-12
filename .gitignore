@@ -2,7 +2,7 @@
 /dist
 /node_modules
 /build
-
+/ml_service/venv
 # Logs
 logs
 *.log
