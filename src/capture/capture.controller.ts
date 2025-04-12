@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, Param } from '@nestjs/common';
 import { CaptureService } from './capture.service';
 
 interface CaptureParams {
@@ -13,8 +13,18 @@ export class CaptureController {
   constructor(private readonly captureService: CaptureService) {}
 
   @Post('start')
-  async startCapture(@Body() params: CaptureParams) {
-    return this.captureService.startCapture(params);
+  async startCapture(@Body('interface') interfaceName?: string) {
+    return this.captureService.startCapture(interfaceName);
+  }
+
+  @Post('stop')
+  async stopCapture() {
+    return this.captureService.stopCapture();
+  }
+
+  @Get('status')
+  async getCaptureStatus() {
+    return this.captureService.getCaptureStatus();
   }
 
   @Get('latest')

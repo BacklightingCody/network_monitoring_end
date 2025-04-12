@@ -12,6 +12,8 @@ async function main() {
       sourceIp: '192.168.1.1',
       destinationIp: '192.168.1.2',
       protocol: 'TCP',
+      sourcePort: 80,
+      destinationPort: 443,
       length: 64,
     },
   });
@@ -22,6 +24,8 @@ async function main() {
       sourceIp: '192.168.1.3',
       destinationIp: '192.168.1.4',
       protocol: 'UDP',
+      sourcePort: 53,
+      destinationPort: 5353,
       length: 128,
     },
   });

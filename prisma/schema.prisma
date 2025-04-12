@@ -7,28 +7,63 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// 原始流量数据表
 model Packet {
-  id              Int      @id @default(autoincrement())
-  timestamp       DateTime // frame.time
-  sourceMac       String?  // eth.src，可为空
-  destinationMac  String?  // eth.dst，可为空
-  sourceIp        String   // ip.src
-  destinationIp   String   // ip.dst
-  sourcePort      Int?     // tcp.srcport 或 udp.srcport，可为空
-  destinationPort Int?     // tcp.dstport 或 udp.dstport，可为空
-  protocol        String   // ip.proto 或 frame.protocols
-  length          Int      // frame.len
-  tcpFlags        String?  // tcp.flags，可为空
-  frameNumber     Int?     // frame.number，可为空
+  id          Int      @id @default(autoincrement())
+  timestamp   DateTime @default(now())
+  sourceMac   String?
+  destinationMac String?
+  sourceIp    String
+  destinationIp String
+  protocol    String
+  sourcePort  Int
+  destinationPort Int
+  length      Int
+  tcpFlags    String?
+  payload     String?
+  rawData     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  trafficAnalysis TrafficAnalysis[] @relation("PacketToTrafficAnalysis")
+  // 关联分析结果
+  analysis    Analysis?
+  // 关联异常记录
+  anomalies   Anomaly[]
 }
 
-model TrafficAnalysis {
-  id              Int      @id @default(autoincrement())
-  packetId        Int
-  analysisResult  String
-  analysisDate    DateTime @default(now())
+// 流量分析结果表
+model Analysis {
+  id          Int      @id @default(autoincrement())
+  packetId    Int      @unique
+  packet      Packet   @relation(fields: [packetId], references: [id])
+  isMalicious Boolean  @default(false)
+  threatType  String?
+  confidence  Float
+  features    Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
 
-  packet          Packet   @relation("PacketToTrafficAnalysis", fields: [packetId], references: [id])
+// 流量特征表
+model TrafficFeature {
+  id          Int      @id @default(autoincrement())
+  timestamp   DateTime @default(now())
+  featureType String
+  value       Float
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// 异常记录表
+model Anomaly {
+  id          Int      @id @default(autoincrement())
+  timestamp   DateTime @default(now())
+  type        String
+  severity    String
+  description String
+  packetId    Int?
+  packet      Packet?  @relation(fields: [packetId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

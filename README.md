@@ -1,57 +1,131 @@
-## Description
+# 网络流量监控与分析系统
 
-Back-end code for network monitoring.
+本系统旨在实现网络流量的实时捕获、分析与可视化，支持基础系统指标监控、异常检测与攻击识别。
 
-## Project setup
+## 系统架构
 
-```bash
-$ pnpm install
+系统采用分布式架构：
+- 后端由 NestJS 提供统一接口
+- 数据存储使用 PostgreSQL
+- 流量分析由 Python + TensorFlow 实现
+- 前端使用 React + ECharts 完成数据展示
+
+## 目录结构
+
+```
+- src/                    # NestJS后端代码
+  - capture/              # 流量捕获模块
+  - analysis/             # 流量分析模块
+  - traffic/              # 流量展示模块
+  - metrics/              # 系统指标监控模块
+  - prisma/               # 数据库访问服务
+  - config/               # 配置文件
+
+- ml_service/             # Python机器学习服务
+  - app/                  # FastAPI应用
+  - models/               # 预训练模型
+  - scripts/              # 训练脚本
+  - requirements.txt      # Python依赖
+
+- frontend/               # 前端React应用
 ```
 
-## Compile and run the project
+## 启动步骤
+
+### 1. 准备环境
+
+确保安装了以下工具：
+- Node.js 16+
+- Python 3.8+
+- PostgreSQL 13+
+- tshark (Wireshark命令行工具)
+
+### 2. 启动后端服务
 
 ```bash
-# development
-$ pnpm run start
+# 安装依赖
+npm install
 
-# watch mode
-$ pnpm run start:dev
+# 生成Prisma客户端
+npx prisma generate
 
-# production mode
-$ pnpm run start:prod
+# 启动开发服务器
+npm run start:dev
 ```
 
-## Run tests
+### 3. 启动Python分析服务
 
+#### 使用启动脚本(推荐)
 ```bash
-# unit tests
-$ pnpm run test
+# 进入机器学习服务目录
+cd ml_service
 
-# e2e tests
-$ pnpm run test:e2e
-
-# test coverage
-$ pnpm run test:cov
+# 使用启动脚本(自动创建目录并检查依赖)
+python start.py --install
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
+#### 或手动启动
 ```bash
-$ pnpm install -g mau
-$ mau deploy
+# 进入机器学习服务目录
+cd ml_service
+
+# 创建并激活虚拟环境
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+venv\Scripts\activate     # Windows
+
+# 安装依赖
+pip install -r requirements.txt
+
+# 手动创建必要目录
+mkdir -p models app/routes
+
+# 启动服务
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+### 4. 环境变量配置
 
-## api
+创建.env文件，配置以下变量：
 
-CPU指标：/metrics/cpu/*
-内存指标：/metrics/memory/*
-磁盘指标：/metrics/disk/*
-网络指标：/metrics/network/*
-系统指标：/metrics/system/*
-运行时指标：/metrics/runtime/*
+```
+DATABASE_URL="postgresql://user:password@localhost:5432/networkmonitoring"
+ML_SERVICE_URL="http://localhost:8000"
+ML_SERVICE_TIMEOUT=30000
+ML_SERVICE_RETRY_ATTEMPTS=3
+ML_SERVICE_RETRY_DELAY=1000
+CAPTURE_INTERFACE="eth0"  # 替换为你的网络接口名
+```
+
+## API文档
+
+启动服务后，可访问以下地址查看API文档：
+
+- NestJS API: http://localhost:3000/api
+- 机器学习服务API: http://localhost:8000/docs
+
+## 故障排除
+
+### Python机器学习服务启动问题
+
+1. TensorFlow兼容性问题
+   - 如果遇到TensorFlow相关错误，尝试降级到兼容版本:
+   ```bash
+   pip install tensorflow==2.10.0
+   ```
+
+2. 端口占用
+   - 如果8000端口被占用，可以指定其他端口:
+   ```bash
+   python start.py --port 8080
+   ```
+
+3. 依赖安装失败
+   - 对于Windows用户，某些依赖可能需要安装C++构建工具
+   - 对于特定平台的预编译wheel包，可访问 https://www.lfd.uci.edu/~gohlke/pythonlibs/
+
+### NestJS后端连接问题
+
+1. 检查ML_SERVICE_URL环境变量是否正确设置
+2. 确保Python服务已启动并可访问
+3. 检查日志中的错误信息: `npm run start:dev > backend.log 2>&1`
