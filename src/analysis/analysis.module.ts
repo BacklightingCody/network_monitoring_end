@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { AnalysisController } from './analysis.controller';
@@ -7,6 +7,7 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { HttpModule } from '@nestjs/axios';
 import { MlServiceConfig } from '../config/ml-service.config';
 import { PythonService } from './python-service';
+import { TrafficModule } from '../traffic/traffic.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { PythonService } from './python-service';
       timeout: 30000,
       maxRedirects: 5,
     }),
+    forwardRef(() => TrafficModule),
   ],
   controllers: [AnalysisController],
   providers: [

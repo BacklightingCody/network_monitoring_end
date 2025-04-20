@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import * as tf from '@tensorflow/tfjs';
 import { AnalysisService } from '../analysis/analysis.service';
@@ -7,6 +7,7 @@ import { AnalysisService } from '../analysis/analysis.service';
 export class TrafficService {
   constructor(
     private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => AnalysisService))
     private readonly analysisService: AnalysisService
   ) {}
 
@@ -212,23 +213,45 @@ export class TrafficService {
 
   // 分析特定数据包
   async analyzePacket(packetId: number) {
-    const packet = await this.prisma.packet.findUnique({
-      where: { id: packetId }
-    });
+    try {
+      const packet = await this.prisma.packet.findUnique({
+        where: { id: packetId }
+      });
 
-    if (!packet) {
-      return { error: 'Packet not found' };
+      if (!packet) {
+        return { error: 'Packet not found' };
+      }
+
+      // 确保分析服务可用
+      if (!this.analysisService || typeof this.analysisService.analyzeTrafficByCondition !== 'function') {
+        console.warn('分析服务不可用');
+        return {
+          packet,
+          analysis: { status: 'unavailable', message: '分析服务不可用' }
+        };
+      }
+
+      try {
+        // 使用分析服务进行分析
+        const analysisResult = await this.analysisService.analyzeTrafficByCondition({
+          id: packetId
+        });
+
+        return {
+          packet,
+          analysis: analysisResult
+        };
+      } catch (analysisError) {
+        console.error('调用分析服务出错:', analysisError);
+        return {
+          packet,
+          analysis: { status: 'error', message: `分析失败: ${analysisError.message}` }
+        };
+      }
+    } catch (error) {
+      console.error('分析数据包失败:', error);
+      throw new Error(`分析数据包失败: ${error.message}`);
     }
-
-    // 使用分析服务进行分析
-    const analysisResult = await this.analysisService.analyzeTrafficByCondition({
-      id: packetId
-    });
-
-    return {
-      packet,
-      analysis: analysisResult
-    };
   }
 
   // 计算流量统计
@@ -345,6 +368,710 @@ export class TrafficService {
       case 'h': return numValue * 60;
       case 'd': return numValue * 60 * 24;
       default: return 5;
+    }
+  }
+
+  // 获取活跃连接
+  async getActiveConnections(limit: number = 20, timeRange?: { start?: Date; end?: Date }) {
+    try {
+      const where: any = {};
+      if (timeRange) {
+        where.timestamp = {};
+        if (timeRange.start) where.timestamp.gte = timeRange.start;
+        if (timeRange.end) where.timestamp.lte = timeRange.end;
+      }
+
+      console.log('查询活跃连接，条件:', JSON.stringify(where));
+
+      const packets = await this.prisma.packet.findMany({
+        where,
+        select: {
+          sourceIp: true,
+          destinationIp: true,
+          sourcePort: true,
+          destinationPort: true,
+          protocol: true,
+          timestamp: true,
+        },
+        orderBy: { timestamp: 'desc' },
+        take: 5000, // 获取足够的数据进行统计
+      });
+
+      console.log(`获取到 ${packets.length} 条数据包记录`);
+
+      // 统计连接信息
+      const connections: Record<string, any> = {};
+      for (const packet of packets) {
+        const key = `${packet.sourceIp}:${packet.sourcePort}-${packet.destinationIp}:${packet.destinationPort}-${packet.protocol}`;
+        if (!connections[key]) {
+          connections[key] = {
+            sourceIp: packet.sourceIp,
+            sourcePort: packet.sourcePort,
+            destinationIp: packet.destinationIp,
+            destinationPort: packet.destinationPort,
+            protocol: packet.protocol,
+            count: 0,
+            lastSeen: packet.timestamp,
+            firstSeen: packet.timestamp,
+          };
+        }
+        
+        connections[key].count++;
+        if (packet.timestamp > connections[key].lastSeen) {
+          connections[key].lastSeen = packet.timestamp;
+        }
+        if (packet.timestamp < connections[key].firstSeen) {
+          connections[key].firstSeen = packet.timestamp;
+        }
+      }
+
+      // 转换为数组并排序
+      const activeConnections = Object.values(connections)
+        .sort((a, b) => b.count - a.count || b.lastSeen.getTime() - a.lastSeen.getTime())
+        .slice(0, limit);
+
+      return {
+        total: Object.keys(connections).length,
+        connections: activeConnections,
+      };
+    } catch (error) {
+      console.error('获取活跃连接错误:', error);
+      throw new Error(`获取活跃连接失败: ${error.message}`);
+    }
+  }
+
+  // 获取端口使用情况
+  async getPortUsage(limit: number = 20, direction: string = 'both', timeRange?: { start?: Date; end?: Date }) {
+    const where: any = {};
+    if (timeRange) {
+      where.timestamp = {};
+      if (timeRange.start) where.timestamp.gte = timeRange.start;
+      if (timeRange.end) where.timestamp.lte = timeRange.end;
+    }
+
+    const packets = await this.prisma.packet.findMany({
+      where,
+      select: {
+        sourcePort: true,
+        destinationPort: true,
+        protocol: true,
+      },
+      take: 10000,
+    });
+
+    // 统计端口使用情况
+    const portCounts: Record<string, any> = {};
+    for (const packet of packets) {
+      // 处理源端口
+      if (direction === 'source' || direction === 'both') {
+        const sourceKey = `${packet.sourcePort}:${packet.protocol}:source`;
+        if (!portCounts[sourceKey]) {
+          portCounts[sourceKey] = {
+            port: packet.sourcePort,
+            protocol: packet.protocol,
+            direction: 'source',
+            count: 0,
+          };
+        }
+        portCounts[sourceKey].count++;
+      }
+      
+      // 处理目标端口
+      if (direction === 'destination' || direction === 'both') {
+        const destKey = `${packet.destinationPort}:${packet.protocol}:destination`;
+        if (!portCounts[destKey]) {
+          portCounts[destKey] = {
+            port: packet.destinationPort,
+            protocol: packet.protocol,
+            direction: 'destination',
+            count: 0,
+          };
+        }
+        portCounts[destKey].count++;
+      }
+    }
+
+    // 转换为数组并排序
+    const portUsage = Object.values(portCounts)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, limit);
+
+    // 添加常见服务名称
+    const portToService: Record<number, string> = {
+      80: 'HTTP',
+      443: 'HTTPS',
+      22: 'SSH',
+      21: 'FTP',
+      25: 'SMTP',
+      110: 'POP3',
+      143: 'IMAP',
+      53: 'DNS',
+      3389: 'RDP',
+      3306: 'MySQL',
+      5432: 'PostgreSQL',
+      1433: 'SQL Server',
+      27017: 'MongoDB',
+      6379: 'Redis',
+      8080: 'HTTP-Proxy',
+      8443: 'HTTPS-Alt',
+    };
+
+    for (const port of portUsage) {
+      port.service = portToService[port.port] || 'Unknown';
+    }
+
+    return {
+      total: Object.keys(portCounts).length,
+      ports: portUsage,
+    };
+  }
+
+  // 获取流量趋势
+  async getTrafficTrend(interval: string = 'hourly', metric: string = 'packets', days: number = 7) {
+    // 计算起始时间
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+
+    // 查询数据
+    const packets = await this.prisma.packet.findMany({
+      where: {
+        timestamp: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+      select: {
+        timestamp: true,
+        length: true,
+      },
+      orderBy: { timestamp: 'asc' },
+    });
+
+    // 准备结果数据
+    const result: any[] = [];
+    const formatDate = (date: Date, intervalType: string) => {
+      if (intervalType === 'hourly') {
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:00`;
+      } else if (intervalType === 'daily') {
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      } else if (intervalType === 'weekly') {
+        const dayOfWeek = date.getDay();
+        const diff = date.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1); // 调整为周一为起始
+        const monday = new Date(date.setDate(diff));
+        return `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`;
+      }
+      return date.toISOString();
+    };
+
+    // 按时间间隔分组数据
+    const grouped: Record<string, any> = {};
+    for (const packet of packets) {
+      const key = formatDate(new Date(packet.timestamp), interval);
+      if (!grouped[key]) {
+        grouped[key] = {
+          time: key,
+          packets: 0,
+          bytes: 0,
+        };
+      }
+      grouped[key].packets++;
+      grouped[key].bytes += packet.length;
+    }
+
+    // 转换为数组
+    for (const key in grouped) {
+      result.push(grouped[key]);
+    }
+
+    return {
+      interval,
+      metric,
+      data: result.sort((a, b) => a.time.localeCompare(b.time)),
+    };
+  }
+
+  // 获取流量地理分布
+  async getGeoDistribution(timeRange?: { start?: Date; end?: Date }) {
+    const where: any = {};
+    if (timeRange) {
+      where.timestamp = {};
+      if (timeRange.start) where.timestamp.gte = timeRange.start;
+      if (timeRange.end) where.timestamp.lte = timeRange.end;
+    }
+
+    const packets = await this.prisma.packet.findMany({
+      where,
+      select: {
+        sourceIp: true,
+        destinationIp: true,
+      },
+      take: 10000,
+    });
+
+    // 这里需要IP地理位置查询服务
+    // 简化实现，返回模拟数据
+    const result = {
+      domestic: {
+        count: 0,
+        percentage: 0,
+        regions: [],
+      },
+      international: {
+        count: 0,
+        percentage: 0,
+        countries: [],
+      },
+    };
+
+    // 模拟一些数据
+    const ipCount = packets.length;
+    
+    // 国内流量占比
+    result.domestic.count = Math.floor(ipCount * 0.65);
+    result.domestic.percentage = 65;
+    result.domestic.regions = [
+      { name: '北京', count: Math.floor(ipCount * 0.15), percentage: 15 },
+      { name: '上海', count: Math.floor(ipCount * 0.12), percentage: 12 },
+      { name: '广东', count: Math.floor(ipCount * 0.10), percentage: 10 },
+      { name: '浙江', count: Math.floor(ipCount * 0.08), percentage: 8 },
+      { name: '江苏', count: Math.floor(ipCount * 0.07), percentage: 7 },
+      { name: '其他', count: Math.floor(ipCount * 0.13), percentage: 13 },
+    ];
+    
+    // 国际流量占比
+    result.international.count = Math.floor(ipCount * 0.35);
+    result.international.percentage = 35;
+    result.international.countries = [
+      { name: '美国', count: Math.floor(ipCount * 0.15), percentage: 15 },
+      { name: '日本', count: Math.floor(ipCount * 0.05), percentage: 5 },
+      { name: '德国', count: Math.floor(ipCount * 0.04), percentage: 4 },
+      { name: '新加坡', count: Math.floor(ipCount * 0.03), percentage: 3 },
+      { name: '英国', count: Math.floor(ipCount * 0.03), percentage: 3 },
+      { name: '其他', count: Math.floor(ipCount * 0.05), percentage: 5 },
+    ];
+
+    return result;
+  }
+
+  // 获取通信对统计
+  async getCommunicationPairs(limit: number = 20, timeRange?: { start?: Date; end?: Date }) {
+    const where: any = {};
+    if (timeRange) {
+      where.timestamp = {};
+      if (timeRange.start) where.timestamp.gte = timeRange.start;
+      if (timeRange.end) where.timestamp.lte = timeRange.end;
+    }
+
+    const packets = await this.prisma.packet.findMany({
+      where,
+      select: {
+        sourceIp: true,
+        destinationIp: true,
+        sourcePort: true,
+        destinationPort: true,
+        protocol: true,
+        length: true,
+      },
+      take: 10000,
+    });
+
+    // 统计通信对
+    const pairs: Record<string, any> = {};
+    for (const packet of packets) {
+      const key = `${packet.sourceIp}-${packet.destinationIp}`;
+      if (!pairs[key]) {
+        pairs[key] = {
+          sourceIp: packet.sourceIp,
+          destinationIp: packet.destinationIp,
+          packetCount: 0,
+          totalBytes: 0,
+          protocols: {},
+        };
+      }
+      
+      pairs[key].packetCount++;
+      pairs[key].totalBytes += packet.length;
+      
+      // 统计协议使用情况
+      if (!pairs[key].protocols[packet.protocol]) {
+        pairs[key].protocols[packet.protocol] = 0;
+      }
+      pairs[key].protocols[packet.protocol]++;
+    }
+
+    // 转换为数组并排序
+    const communicationPairs = Object.values(pairs)
+      .sort((a, b) => b.packetCount - a.packetCount)
+      .slice(0, limit);
+
+    // 转换协议统计为数组格式
+    for (const pair of communicationPairs) {
+      const protocols = [];
+      for (const proto in pair.protocols) {
+        protocols.push({
+          protocol: proto,
+          count: pair.protocols[proto],
+          percentage: (pair.protocols[proto] / pair.packetCount) * 100,
+        });
+      }
+      pair.protocolStats = protocols.sort((a, b) => b.count - a.count);
+      delete pair.protocols;
+    }
+
+    return {
+      total: Object.keys(pairs).length,
+      pairs: communicationPairs,
+    };
+  }
+
+  // 获取数据包大小分布
+  async getPacketSizeDistribution(timeRange?: { start?: Date; end?: Date }) {
+    const where: any = {};
+    if (timeRange) {
+      where.timestamp = {};
+      if (timeRange.start) where.timestamp.gte = timeRange.start;
+      if (timeRange.end) where.timestamp.lte = timeRange.end;
+    }
+
+    const packets = await this.prisma.packet.findMany({
+      where,
+      select: {
+        length: true,
+      },
+      take: 10000,
+    });
+
+    // 定义大小分组
+    const sizeRanges = [
+      { min: 0, max: 64, label: '0-64 bytes' },
+      { min: 65, max: 128, label: '65-128 bytes' },
+      { min: 129, max: 256, label: '129-256 bytes' },
+      { min: 257, max: 512, label: '257-512 bytes' },
+      { min: 513, max: 1024, label: '513-1024 bytes' },
+      { min: 1025, max: 1500, label: '1025-1500 bytes' },
+      { min: 1501, max: Infinity, label: '>1500 bytes' },
+    ];
+
+    // 初始化分组计数
+    const distribution = sizeRanges.map(range => ({ ...range, count: 0, percentage: 0 }));
+
+    // 统计分布
+    for (const packet of packets) {
+      for (const range of distribution) {
+        if (packet.length >= range.min && packet.length <= range.max) {
+          range.count++;
+          break;
+        }
+      }
+    }
+
+    // 计算百分比
+    const totalPackets = packets.length;
+    for (const range of distribution) {
+      range.percentage = totalPackets > 0 ? (range.count / totalPackets) * 100 : 0;
+    }
+
+    // 计算统计信息
+    const sizes = packets.map(p => p.length);
+    const stats = {
+      min: Math.min(...sizes),
+      max: Math.max(...sizes),
+      avg: sizes.reduce((sum, size) => sum + size, 0) / totalPackets,
+      median: this.calculateMedian(sizes),
+    };
+
+    return {
+      total: totalPackets,
+      distribution,
+      stats,
+    };
+  }
+
+  // 计算中位数
+  private calculateMedian(values: number[]): number {
+    if (values.length === 0) return 0;
+    
+    const sorted = [...values].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    
+    return sorted.length % 2 === 0
+      ? (sorted[mid - 1] + sorted[mid]) / 2
+      : sorted[mid];
+  }
+
+  // 获取实时流量监控数据
+  async getRealtimeTraffic() {
+    // 获取最近5分钟的数据
+    const fiveMinutesAgo = new Date();
+    fiveMinutesAgo.setMinutes(fiveMinutesAgo.getMinutes() - 5);
+    
+    const packets = await this.prisma.packet.findMany({
+      where: {
+        timestamp: {
+          gte: fiveMinutesAgo,
+        },
+      },
+      select: {
+        timestamp: true,
+        length: true,
+        protocol: true,
+      },
+      orderBy: { timestamp: 'asc' },
+    });
+
+    // 按10秒间隔分组
+    const intervals: Record<string, any> = {};
+    for (const packet of packets) {
+      const timestamp = new Date(packet.timestamp);
+      // 向下取整到最近的10秒
+      timestamp.setSeconds(Math.floor(timestamp.getSeconds() / 10) * 10);
+      timestamp.setMilliseconds(0);
+      
+      const key = timestamp.toISOString();
+      if (!intervals[key]) {
+        intervals[key] = {
+          timestamp: key,
+          packetCount: 0,
+          byteCount: 0,
+          protocols: {},
+        };
+      }
+      
+      intervals[key].packetCount++;
+      intervals[key].byteCount += packet.length;
+      
+      // 统计协议
+      if (!intervals[key].protocols[packet.protocol]) {
+        intervals[key].protocols[packet.protocol] = 0;
+      }
+      intervals[key].protocols[packet.protocol]++;
+    }
+
+    // 转换为数组
+    const timePoints = Object.values(intervals).sort((a, b) => 
+      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
+
+    // 计算速率
+    for (let i = 1; i < timePoints.length; i++) {
+      const current = timePoints[i];
+      const prev = timePoints[i - 1];
+      
+      const timeDiff = (new Date(current.timestamp).getTime() - new Date(prev.timestamp).getTime()) / 1000; // 秒
+      if (timeDiff > 0) {
+        current.packetsPerSecond = current.packetCount / timeDiff;
+        current.bytesPerSecond = current.byteCount / timeDiff;
+      } else {
+        current.packetsPerSecond = 0;
+        current.bytesPerSecond = 0;
+      }
+    }
+    
+    // 如果第一个点没有速率，设为0
+    if (timePoints.length > 0) {
+      if (!timePoints[0].packetsPerSecond) timePoints[0].packetsPerSecond = 0;
+      if (!timePoints[0].bytesPerSecond) timePoints[0].bytesPerSecond = 0;
+    }
+
+    // 计算总计和平均值
+    const totalPackets = packets.length;
+    const totalBytes = packets.reduce((sum, p) => sum + p.length, 0);
+    const duration = packets.length > 1 ? 
+      (new Date(packets[packets.length - 1].timestamp).getTime() - new Date(packets[0].timestamp).getTime()) / 1000 : 0;
+    
+    const summary = {
+      totalPackets,
+      totalBytes,
+      avgPacketsPerSecond: duration > 0 ? totalPackets / duration : 0,
+      avgBytesPerSecond: duration > 0 ? totalBytes / duration : 0,
+      duration: duration,
+    };
+
+    return {
+      summary,
+      timePoints,
+    };
+  }
+
+  // 获取流量统计聚合数据 - 汇总多个接口的数据
+  async getAllTrafficMetrics() {
+    try {
+      console.log('开始获取流量统计聚合数据');
+      
+      // 设置通用的时间范围 - 默认获取最近24小时
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setHours(startDate.getHours() - 24);
+      
+      const timeRange = { start: startDate, end: endDate };
+      
+      // 并行获取各种统计数据
+      const [
+        basicStats,              // 基本流量统计
+        topSources,              // 流量来源
+        topDestinations,         // 流量目标
+        protocolStats,           // 协议统计
+        realtimeTraffic,         // 实时流量 
+        activeConnections,       // 活跃连接
+        communicationPairs,      // 通信对
+        packetSizeDistribution,  // 数据包大小分布
+        applicationUsage         // 应用使用情况
+      ] = await Promise.all([
+        this.getTrafficStats(timeRange),
+        this.getTopSources(5, timeRange),
+        this.getTopDestinations(5, timeRange),
+        this.getProtocolStats(timeRange),
+        this.getRealtimeTraffic(),
+        this.getActiveConnections(5, timeRange),
+        this.getCommunicationPairs(5, timeRange),
+        this.getPacketSizeDistribution(timeRange),
+        this.getApplicationUsage(5, timeRange)
+      ]);
+      
+      // 获取总数据包计数
+      const totalPackets = await this.prisma.packet.count();
+      const lastPacket = await this.prisma.packet.findFirst({
+        orderBy: { timestamp: 'desc' }
+      });
+      
+      // 获取最近一小时的数据量
+      const oneHourAgo = new Date();
+      oneHourAgo.setHours(oneHourAgo.getHours() - 1);
+      const lastHourPackets = await this.prisma.packet.count({
+        where: { timestamp: { gte: oneHourAgo } }
+      });
+      
+      // 计算异常和警报数量
+      const anomalyCount = await this.prisma.anomaly.count({
+        where: { timestamp: { gte: startDate } }
+      });
+      
+      // 汇总返回
+      return {
+        summary: {
+          totalPackets,
+          lastCaptureTime: lastPacket?.timestamp || null,
+          lastHourTraffic: lastHourPackets,
+          anomalyCount,
+          timeRange: {
+            start: startDate,
+            end: endDate
+          }
+        },
+        basicStats,
+        topSources,
+        topDestinations,
+        protocolStats: protocolStats.stats,
+        realtimeTraffic: realtimeTraffic.summary,
+        activeConnections: activeConnections.connections,
+        communicationPairs: communicationPairs.pairs,
+        packetSizes: packetSizeDistribution.distribution,
+        applications: applicationUsage.applications
+      };
+    } catch (error) {
+      console.error('获取流量统计聚合数据失败:', error);
+      throw new Error(`获取流量统计聚合数据失败: ${error.message}`);
+    }
+  }
+
+  // 获取网络应用使用情况
+  async getApplicationUsage(limit: number = 10, timeRange?: { start?: Date; end?: Date }) {
+    try {
+      const where: any = {};
+      if (timeRange) {
+        where.timestamp = {};
+        if (timeRange.start) where.timestamp.gte = timeRange.start;
+        if (timeRange.end) where.timestamp.lte = timeRange.end;
+      }
+
+      console.log('查询应用使用情况，条件:', JSON.stringify(where));
+
+      const packets = await this.prisma.packet.findMany({
+        where,
+        select: {
+          destinationPort: true,
+          protocol: true,
+          length: true,
+        },
+        take: 10000,
+      });
+
+      console.log(`获取到 ${packets.length} 条数据包记录`);
+
+      // 端口到应用的映射
+      const portToApp: Record<number, string> = {
+        80: 'HTTP',
+        20: 'FTP-Data',
+        21: 'FTP-Control',
+        22: 'SSH',
+        23: 'Telnet',
+        25: 'SMTP',
+        53: 'DNS',
+        110: 'POP3',
+        143: 'IMAP',
+        194: 'IRC',
+        389: 'LDAP',
+        443: 'HTTPS',
+        465: 'SMTPS',
+        587: 'SMTP Submission',
+        993: 'IMAPS',
+        995: 'POP3S',
+        1433: 'Microsoft SQL',
+        1521: 'Oracle SQL',
+        3306: 'MySQL',
+        3389: 'RDP',
+        5432: 'PostgreSQL',
+        5900: 'VNC',
+        8080: 'HTTP Alternate',
+        8443: 'HTTPS Alternate',
+        9000: 'HTTP Alternate',
+      };
+
+      // 统计应用使用情况
+      const apps: Record<string, any> = {};
+      for (const packet of packets) {
+        let appName = portToApp[packet.destinationPort] || 'Unknown';
+        
+        // 根据端口和协议特殊处理一些应用
+        if (packet.protocol === '17' && packet.destinationPort === 53) { // UDP DNS
+          appName = 'DNS';
+        } else if (packet.protocol === '6' && (packet.destinationPort === 80 || packet.destinationPort === 8080)) { // TCP HTTP
+          appName = 'HTTP';
+        } else if (packet.protocol === '6' && (packet.destinationPort === 443 || packet.destinationPort === 8443)) { // TCP HTTPS
+          appName = 'HTTPS';
+        }
+        
+        if (!apps[appName]) {
+          apps[appName] = {
+            name: appName,
+            packetCount: 0,
+            byteCount: 0,
+            ports: new Set(),
+          };
+        }
+        
+        apps[appName].packetCount++;
+        apps[appName].byteCount += packet.length;
+        apps[appName].ports.add(packet.destinationPort);
+      }
+
+      // 转换为数组
+      const appUsage = Object.values(apps).map(app => ({
+        name: app.name,
+        packetCount: app.packetCount,
+        byteCount: app.byteCount,
+        ports: Array.from(app.ports),
+        percentage: (app.packetCount / packets.length * 100) || 0,
+      })).sort((a, b) => b.packetCount - a.packetCount).slice(0, limit);
+
+      return {
+        total: Object.keys(apps).length,
+        applications: appUsage,
+      };
+    } catch (error) {
+      console.error('获取应用使用情况错误:', error);
+      throw new Error(`获取应用使用情况失败: ${error.message}`);
     }
   }
 }

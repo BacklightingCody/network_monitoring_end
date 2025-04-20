@@ -12,14 +12,17 @@ import { APP_INTERCEPTOR, APP_FILTER, APP_PIPE } from '@nestjs/core';
 import { MetricsModule } from '@/metrics/metrics.module';
 import { PrismaModule } from '@/prisma/prisma.module';
 import { CaptureModule } from '@/capture/capture.module';
+import { AnalysisModule } from '@/analysis/analysis.module';
+
 const envFiles = ['.env'];
 export const IS_DEV = process.env.RUNNING_ENV !== 'prod';
 if (IS_DEV) {
   envFiles.unshift('.env.dev');
 }
-//  else {
-//   envFilePath.unshift('.env.prod');
+// else {
+//   envFiles.unshift('.env.prod');
 // }
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -32,11 +35,11 @@ if (IS_DEV) {
     }),
     DevicesModule,  // 引入 Devices 模块
     TrafficModule,  // 引入 Traffic 模块
-    LogsModule,   // 引入 Logs 模块
-    MetricsModule,   // 引入 Metrics 模块
+    LogsModule,     // 引入 Logs 模块
+    MetricsModule,  // 引入 Metrics 模块
     PrismaModule,   // 引入 Prisma 模块
-    CaptureModule,   // 引入 Capture 模块
-    TrafficModule,   // 引入 Traffic 模块
+    CaptureModule,  // 引入 Capture 模块
+    AnalysisModule, // 引入 Analysis 模块
   ],
   providers: [
     {

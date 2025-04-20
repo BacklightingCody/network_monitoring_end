@@ -44,6 +44,9 @@ importers:
       axios:
         specifier: ^1.7.9
         version: 1.7.9
+      node-fetch:
+        specifier: '2'
+        version: 2.7.0
       reflect-metadata:
         specifier: ^0.1.14
         version: 0.1.14

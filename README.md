@@ -129,3 +129,20 @@ CAPTURE_INTERFACE="eth0"  # 替换为你的网络接口名
 1. 检查ML_SERVICE_URL环境变量是否正确设置
 2. 确保Python服务已启动并可访问
 3. 检查日志中的错误信息: `npm run start:dev > backend.log 2>&1`
+
+Prometheus启动
+prometheus.exe --config.file=prometheus.yml --web.listen-address=":9091"
+
+prisma客户端生成
+npx prisma generate
+npx prisma db push
+
+
+编号 | 设备描述 | 建议
+4 | (WLAN) | ✅ 无线网卡，笔记本通常使用这个
+10 | (以太网 2) | 💡 有线网，若使用网线时选这个
+11 | (以太网) | 💡 有线网，可能是主板网卡
+5 / 6 | VMware Network Adapter | ❌ 虚拟机专用，忽略
+9 | Loopback | ❌ 回环接口，忽略
+12 | USBPcap | ❌ USB设备，不用
+13~18 | ciscodump、wifidump.exe等 | ❌ 插件，排除

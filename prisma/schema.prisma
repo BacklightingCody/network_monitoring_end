@@ -21,6 +21,7 @@ model Packet {
   length      Int
   tcpFlags    String?
   payload     String?
+  applicationData String? // 应用层协议信息(HTTP, TLS, DNS等)
   rawData     String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { HttpService } from '@nestjs/axios';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -8,6 +8,7 @@ import { Interval } from '@nestjs/schedule';
 import { MlServiceConfig } from '../config/ml-service.config';
 import { firstValueFrom } from 'rxjs';
 import { PythonService } from './python-service';
+import { TrafficService } from '../traffic/traffic.service';
 
 @Injectable()
 @WebSocketGateway({ cors: true })
@@ -33,6 +34,8 @@ export class AnalysisService implements OnModuleInit {
     private readonly httpService: HttpService,
     private readonly mlConfig: MlServiceConfig,
     private readonly pythonService: PythonService,
+    @Inject(forwardRef(() => TrafficService))
+    private readonly trafficService: TrafficService,
   ) {}
 
   async onModuleInit() {

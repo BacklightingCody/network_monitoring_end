@@ -3,6 +3,7 @@
 /node_modules
 /build
 /ml_service/venv
+/tmp
 # Logs
 logs
 *.log
