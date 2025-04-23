@@ -59,6 +59,10 @@ export class CaptureService implements OnModuleInit {
     
     // 获取并打印可用网卡列表，帮助调试
     try {
+      // 检查数据库包表是否有数据
+      const packetCount = await this.prisma.packet.count();
+      console.log(`数据库中现有数据包数量: ${packetCount}`);
+      
       const interfaces = await this.getAvailableInterfaces();
       console.log('可用网络接口列表:');
       interfaces.forEach((intf, index) => {
@@ -74,7 +78,20 @@ export class CaptureService implements OnModuleInit {
       
       if (selectedInterface) {
         console.log(`选择网络接口: ${selectedInterface}`);
-        await this.startCapture(selectedInterface);
+        // 确保tshark可用
+        try {
+          const { stdout } = await execAsync(`${this.config.tsharkPath} --version`);
+          console.log(`检测到tshark版本: ${stdout.split('\n')[0]}`);
+          
+          // 启动捕获
+          await this.startCapture(selectedInterface);
+          console.log(`成功启动网络捕获，使用接口: ${selectedInterface}`);
+        } catch (tsharkError) {
+          console.error('tshark命令执行失败:', tsharkError);
+          console.error('请确保tshark已正确安装且路径配置正确');
+          console.error(`当前配置的tshark路径: ${this.config.tsharkPath}`);
+          console.error('捕获未能启动，实时流量数据将不可用');
+        }
       } else {
         console.error('找不到可用的网络接口，捕获未启动');
       }
@@ -364,8 +381,8 @@ export class CaptureService implements OnModuleInit {
               payload: packet.payload || null,
               applicationData: packet.applicationData || null,
               rawData: typeof packet.rawData === 'string' 
-                ? packet.rawData.substring(0, 5000) // 限制长度避免数据过大
-                : JSON.stringify(packet.rawData).substring(0, 5000)
+                ? packet.rawData.substring(0, 10000) // 限制长度避免数据过大
+                : JSON.stringify(packet.rawData).substring(0, 10000)
             };
           } catch (e) {
             console.error('格式化数据包失败:', e);

@@ -15,7 +15,7 @@ export class CaptureConfig {
     (os.platform() === 'win32' ? 'WLAN' : 'eth0'); // Windows使用接口名称，Linux使用eth0
     
   // 捕获持续时间（秒）
-  defaultDuration: number = parseInt(process.env.DEFAULT_DURATION, 10) || 30000;
+  defaultDuration: number = parseInt(process.env.DEFAULT_DURATION, 10) || 300000;
   
   // 输出JSON文件路径
   jsonFilePath: string = process.env.JSON_FILE_PATH || 
@@ -105,7 +105,7 @@ export class CaptureConfig {
       command = `${this.tsharkPath} -i "${interfaceName}"`;
     }
     
-    console.log(`使用网络接口: ${interfaceName}`);
+    console.log(`使用网络接口: ${interfaceName}, 系统类型: ${isWindows ? 'Windows' : 'Linux/Mac'}`);
     
     // 添加输出格式选项 - 使用JSON格式，并指定具体字段
     command += ' -T json';
@@ -138,8 +138,21 @@ export class CaptureConfig {
     // 添加稳定性选项
     command += ' -N nmdt'; // 解析MAC、网络、域名、传输层
     
+    // 使用更多高级选项以确保数据完整性
+    if (isWindows) {
+      // Windows特定选项
+      command += ' --log-level=warning'; // 减少日志噪音
+      command += ' -n'; // 不解析地址
+    } else {
+      // Linux/Mac特定选项
+      command += ' -n'; // 不解析地址
+    }
+    
     // 更好的错误处理
     command += ' --print';
+
+    // 以毫秒为单位设置捕获的数据包时间戳
+    command += ' -t ad';
     
     console.log(`完整tshark命令: ${command}`);
     

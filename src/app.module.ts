@@ -13,6 +13,7 @@ import { MetricsModule } from '@/metrics/metrics.module';
 import { PrismaModule } from '@/prisma/prisma.module';
 import { CaptureModule } from '@/capture/capture.module';
 import { AnalysisModule } from '@/analysis/analysis.module';
+import { TopologyModule } from '@/topology/topology.module';
 
 const envFiles = ['.env'];
 export const IS_DEV = process.env.RUNNING_ENV !== 'prod';
@@ -40,6 +41,7 @@ if (IS_DEV) {
     PrismaModule,   // 引入 Prisma 模块
     CaptureModule,  // 引入 Capture 模块
     AnalysisModule, // 引入 Analysis 模块
+    TopologyModule, // 引入 Topology 模块
   ],
   providers: [
     {

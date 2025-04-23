@@ -1,5 +1,6 @@
 import { Controller, Get, Query, Param, ParseIntPipe, HttpException, HttpStatus } from '@nestjs/common';
 import { TrafficService } from './traffic.service';
+import { RealtimeTrafficData, TrafficTrendData } from './traffic.types';
 
 @Controller('traffic')
 export class TrafficController {
@@ -278,7 +279,7 @@ export class TrafficController {
     @Query('interval') interval: string = 'hourly', // 'hourly', 'daily', 'weekly'
     @Query('metric') metric: string = 'packets', // 'packets', 'bytes'
     @Query('days') days: string = '7',
-  ) {
+  ): Promise<TrafficTrendData> {
     try {
       // 检查服务方法是否存在
       if (typeof this.trafficService.getTrafficTrend !== 'function') {
@@ -383,7 +384,7 @@ export class TrafficController {
 
   // 新增接口：获取实时流量监控数据
   @Get('realtime')
-  async getRealtimeTraffic() {
+  async getRealtimeTraffic(): Promise<RealtimeTrafficData> {
     try {
       // 检查服务方法是否存在
       if (typeof this.trafficService.getRealtimeTraffic !== 'function') {
@@ -440,8 +441,43 @@ export class TrafficController {
   }
 
   @Get('all')
-  async getAllTrafficMetrics() {
-    return await this.trafficService.getAllTrafficMetrics();
+  async getAllTrafficMetrics(
+    @Query('startTime') startTime?: string,
+    @Query('endTime') endTime?: string,
+    @Query('interval') interval: string = '5m',
+    @Query('limit') limit: string = '10',
+    @Query('includeRealtime') includeRealtime: string = 'true',
+    @Query('includeTrafficTrend') includeTrafficTrend: string = 'true',
+    @Query('includePackets') includePackets: string = 'false',
+    @Query('days') days: string = '7',
+  ) {
+    try {
+      // 转换参数
+      const timeRange = this.getTimeRange(startTime, endTime);
+      const limitNum = parseInt(limit, 10);
+      const daysNum = parseInt(days, 10);
+      
+      // 布尔值转换
+      const includeRealtimeFlag = includeRealtime?.toLowerCase() === 'true';
+      const includeTrafficTrendFlag = includeTrafficTrend?.toLowerCase() === 'true';
+      const includePacketsFlag = includePackets?.toLowerCase() === 'true';
+      
+      return await this.trafficService.getAllTrafficMetrics({
+        timeRange,
+        interval,
+        limit: limitNum,
+        includeRealtime: includeRealtimeFlag,
+        includeTrafficTrend: includeTrafficTrendFlag,
+        includePackets: includePacketsFlag,
+        days: daysNum
+      });
+    } catch (error) {
+      console.error('获取全部流量统计数据失败:', error);
+      throw new HttpException(
+        `获取全部流量统计数据失败: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 
 }

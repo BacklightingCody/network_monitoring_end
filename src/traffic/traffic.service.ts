@@ -2,6 +2,7 @@ import { Injectable, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import * as tf from '@tensorflow/tfjs';
 import { AnalysisService } from '../analysis/analysis.service';
+import { IpStatItem, RealtimeTrafficData, StatisticsResult, TrafficTrendData } from './traffic.types';
 
 @Injectable()
 export class TrafficService {
@@ -99,7 +100,7 @@ export class TrafficService {
   }
 
   // 获取最常见的源IP地址
-  async getTopSources(limit: number = 10, timeRange?: { start?: Date; end?: Date }) {
+  async getTopSources(limit: number = 10, timeRange?: { start?: Date; end?: Date }): Promise<IpStatItem[]> {
     const where: any = {};
     if (timeRange) {
       where.timestamp = {};
@@ -110,7 +111,7 @@ export class TrafficService {
     const packets = await this.prisma.packet.findMany({
       where,
       select: { sourceIp: true },
-      take: 5000,
+      take: 10000,
     });
 
     // 统计IP出现次数
@@ -129,7 +130,7 @@ export class TrafficService {
   }
 
   // 获取最常见的目标IP地址
-  async getTopDestinations(limit: number = 10, timeRange?: { start?: Date; end?: Date }) {
+  async getTopDestinations(limit: number = 10, timeRange?: { start?: Date; end?: Date }): Promise<IpStatItem[]> {
     const where: any = {};
     if (timeRange) {
       where.timestamp = {};
@@ -527,7 +528,7 @@ export class TrafficService {
   }
 
   // 获取流量趋势
-  async getTrafficTrend(interval: string = 'hourly', metric: string = 'packets', days: number = 7) {
+  async getTrafficTrend(interval: string = 'hourly', metric: string = 'packets', days: number = 7): Promise<TrafficTrendData> {
     // 计算起始时间
     const endDate = new Date();
     const startDate = new Date();
@@ -801,15 +802,18 @@ export class TrafficService {
   }
 
   // 获取实时流量监控数据
-  async getRealtimeTraffic() {
-    // 获取最近5分钟的数据
-    const fiveMinutesAgo = new Date();
-    fiveMinutesAgo.setMinutes(fiveMinutesAgo.getMinutes() - 5);
+  async getRealtimeTraffic(): Promise<RealtimeTrafficData> {
+    // 获取最近30分钟的数据 (之前只查询5分钟，可能导致数据不足)
+    const thirtyMinutesAgo = new Date();
+    thirtyMinutesAgo.setMinutes(thirtyMinutesAgo.getMinutes() - 30);
     
+    console.log(`查询实时流量数据，时间范围: ${thirtyMinutesAgo.toISOString()} 到 ${new Date().toISOString()}`);
+    
+    // 查询最近的数据包
     const packets = await this.prisma.packet.findMany({
       where: {
         timestamp: {
-          gte: fiveMinutesAgo,
+          gte: thirtyMinutesAgo,
         },
       },
       select: {
@@ -818,13 +822,45 @@ export class TrafficService {
         protocol: true,
       },
       orderBy: { timestamp: 'asc' },
+      take: 1000, // 增加查询上限
     });
+
+    console.log(`查询到 ${packets.length} 条实时流量数据包`);
+    
+    // 记录每个数据包的时间戳，帮助调试
+    if (packets.length > 0) {
+      console.log(`最早数据包时间: ${new Date(packets[0].timestamp).toISOString()}`);
+      console.log(`最新数据包时间: ${new Date(packets[packets.length-1].timestamp).toISOString()}`);
+    }
+
+    // 如果没有数据，尝试获取任何时间的数据包作为回退
+    if (packets.length === 0) {
+      console.log('没有找到最近30分钟的流量数据，尝试获取最新的100条记录');
+      const latestPackets = await this.prisma.packet.findMany({
+        select: {
+          timestamp: true,
+          length: true,
+          protocol: true,
+        },
+        orderBy: { timestamp: 'desc' },
+        take: 100,
+      });
+      
+      console.log(`查询到 ${latestPackets.length} 条最新流量数据包`);
+      if (latestPackets.length > 0) {
+        // 按时间升序排序，与上面的逻辑保持一致
+        packets.push(...latestPackets.reverse());
+      }
+    }
 
     // 按10秒间隔分组
     const intervals: Record<string, any> = {};
     for (const packet of packets) {
-      const timestamp = new Date(packet.timestamp);
+      // 确保timestamp是Date对象
+      const packetTime = packet.timestamp instanceof Date ? packet.timestamp : new Date(packet.timestamp);
+      
       // 向下取整到最近的10秒
+      const timestamp = new Date(packetTime);
       timestamp.setSeconds(Math.floor(timestamp.getSeconds() / 10) * 10);
       timestamp.setMilliseconds(0);
       
@@ -852,6 +888,8 @@ export class TrafficService {
     const timePoints = Object.values(intervals).sort((a, b) => 
       new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
     );
+
+    console.log(`生成了 ${timePoints.length} 个时间点数据`);
 
     // 计算速率
     for (let i = 1; i < timePoints.length; i++) {
@@ -888,6 +926,9 @@ export class TrafficService {
       duration: duration,
     };
 
+    // 记录最终返回的数据摘要
+    console.log(`实时流量数据摘要: 总数据包: ${totalPackets}, 总字节: ${totalBytes}, 平均每秒数据包: ${summary.avgPacketsPerSecond}, 平均每秒字节: ${summary.avgBytesPerSecond}`);
+
     return {
       summary,
       timePoints,
@@ -895,39 +936,103 @@ export class TrafficService {
   }
 
   // 获取流量统计聚合数据 - 汇总多个接口的数据
-  async getAllTrafficMetrics() {
+  async getAllTrafficMetrics(options: {
+    timeRange?: { start?: Date; end?: Date };
+    interval?: string;
+    limit?: number;
+    includeRealtime?: boolean;
+    includeTrafficTrend?: boolean;
+    includePackets?: boolean;
+    days?: number;
+  } = {}) {
     try {
       console.log('开始获取流量统计聚合数据');
       
-      // 设置通用的时间范围 - 默认获取最近24小时
-      const endDate = new Date();
-      const startDate = new Date();
-      startDate.setHours(startDate.getHours() - 24);
+      // 设置默认值
+      const limit = options.limit || 10;
+      const interval = options.interval || '5m';
+      const includeRealtime = options.includeRealtime !== false;
+      const includeTrafficTrend = options.includeTrafficTrend !== false;
+      const includePackets = options.includePackets || false;
+      const days = options.days || 7;
       
-      const timeRange = { start: startDate, end: endDate };
+      // 设置通用的时间范围 - 默认获取最近24小时
+      let timeRange = options.timeRange;
+      if (!timeRange) {
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setHours(startDate.getHours() - 24);
+        timeRange = { start: startDate, end: endDate };
+      }
+      
+      // 准备Promise数组
+      const promises: Promise<StatisticsResult>[] = [
+        this.getTrafficStats(timeRange, interval) as Promise<StatisticsResult>,            // 基本流量统计
+        this.getTopSources(limit, timeRange) as Promise<StatisticsResult>,                 // 流量来源
+        this.getTopDestinations(limit, timeRange) as Promise<StatisticsResult>,            // 流量目标
+        this.getProtocolStats(timeRange) as Promise<StatisticsResult>,                     // 协议统计
+        this.getActiveConnections(limit, timeRange) as Promise<StatisticsResult>,          // 活跃连接
+        this.getCommunicationPairs(limit, timeRange) as Promise<StatisticsResult>,         // 通信对
+        this.getPacketSizeDistribution(timeRange) as Promise<StatisticsResult>,            // 数据包大小分布
+        this.getApplicationUsage(limit, timeRange) as Promise<StatisticsResult>,           // 应用使用情况
+        this.getPortUsage(limit, 'both', timeRange) as Promise<StatisticsResult>,          // 端口使用情况
+        this.getGeoDistribution(timeRange) as Promise<StatisticsResult>,                   // 地理分布
+      ];
+      
+      // 可选添加实时流量
+      if (includeRealtime) {
+        promises.push(this.getRealtimeTraffic() as Promise<StatisticsResult>);
+      }
+      
+      // 可选添加流量趋势
+      if (includeTrafficTrend) {
+        promises.push(this.getTrafficTrend('hourly', 'packets', days) as Promise<StatisticsResult>);
+        promises.push(this.getTrafficTrend('hourly', 'bytes', days) as Promise<StatisticsResult>);
+      }
+      
+      // 可选添加数据包列表
+      let packetsList = null;
+      if (includePackets) {
+        packetsList = await this.getPackets({
+          page: 1,
+          limit: 100,
+          startTime: timeRange.start,
+          endTime: timeRange.end,
+        });
+      }
       
       // 并行获取各种统计数据
+      const results = await Promise.all(promises);
+      
+      // 提取结果
       const [
-        basicStats,              // 基本流量统计
-        topSources,              // 流量来源
-        topDestinations,         // 流量目标
-        protocolStats,           // 协议统计
-        realtimeTraffic,         // 实时流量 
-        activeConnections,       // 活跃连接
-        communicationPairs,      // 通信对
-        packetSizeDistribution,  // 数据包大小分布
-        applicationUsage         // 应用使用情况
-      ] = await Promise.all([
-        this.getTrafficStats(timeRange),
-        this.getTopSources(5, timeRange),
-        this.getTopDestinations(5, timeRange),
-        this.getProtocolStats(timeRange),
-        this.getRealtimeTraffic(),
-        this.getActiveConnections(5, timeRange),
-        this.getCommunicationPairs(5, timeRange),
-        this.getPacketSizeDistribution(timeRange),
-        this.getApplicationUsage(5, timeRange)
-      ]);
+        basicStats,                  // 基本流量统计
+        topSources,                  // 流量来源
+        topDestinations,             // 流量目标
+        protocolStats,               // 协议统计
+        activeConnections,           // 活跃连接
+        communicationPairs,          // 通信对
+        packetSizeDistribution,      // 数据包大小分布
+        applicationUsage,            // 应用使用情况
+        portUsage,                   // 端口使用情况
+        geoDistribution,             // 地理分布
+        ...optionalResults           // 可选的结果
+      ] = results;
+      
+      // 处理可选结果
+      let realtimeTraffic = null;
+      let packetsTrend = null;
+      let bytesTrend = null;
+      
+      let resultIndex = 0;
+      if (includeRealtime) {
+        realtimeTraffic = optionalResults[resultIndex++] as RealtimeTrafficData;
+      }
+      
+      if (includeTrafficTrend) {
+        packetsTrend = optionalResults[resultIndex++] as TrafficTrendData;
+        bytesTrend = optionalResults[resultIndex++] as TrafficTrendData;
+      }
       
       // 获取总数据包计数
       const totalPackets = await this.prisma.packet.count();
@@ -943,32 +1048,52 @@ export class TrafficService {
       });
       
       // 计算异常和警报数量
-      const anomalyCount = await this.prisma.anomaly.count({
-        where: { timestamp: { gte: startDate } }
+      const anomalies = await this.getAnomalies(limit, { 
+        timestamp: { gte: timeRange.start }
       });
       
-      // 汇总返回
-      return {
+      // 构建完整结果
+      const result: any = {
         summary: {
           totalPackets,
           lastCaptureTime: lastPacket?.timestamp || null,
           lastHourTraffic: lastHourPackets,
-          anomalyCount,
+          anomalyCount: anomalies.length,
           timeRange: {
-            start: startDate,
-            end: endDate
+            start: timeRange.start,
+            end: timeRange.end
           }
         },
         basicStats,
         topSources,
         topDestinations,
-        protocolStats: protocolStats.stats,
-        realtimeTraffic: realtimeTraffic.summary,
-        activeConnections: activeConnections.connections,
-        communicationPairs: communicationPairs.pairs,
-        packetSizes: packetSizeDistribution.distribution,
-        applications: applicationUsage.applications
+        protocolStats: 'stats' in protocolStats ? protocolStats.stats : [],
+        activeConnections: 'connections' in activeConnections ? activeConnections.connections : [],
+        communicationPairs: 'pairs' in communicationPairs ? communicationPairs.pairs : [],
+        packetSizes: 'distribution' in packetSizeDistribution ? packetSizeDistribution.distribution : [],
+        applications: 'applications' in applicationUsage ? applicationUsage.applications : [],
+        portUsage: 'ports' in portUsage ? portUsage.ports : [],
+        geoDistribution,
+        anomalies
       };
+      
+      // 添加可选数据
+      if (realtimeTraffic) {
+        result.realtimeTraffic = realtimeTraffic;
+      }
+      
+      if (packetsTrend && bytesTrend) {
+        result.trafficTrend = {
+          packets: packetsTrend.data,
+          bytes: bytesTrend.data
+        };
+      }
+      
+      if (packetsList) {
+        result.recentPackets = packetsList;
+      }
+      
+      return result;
     } catch (error) {
       console.error('获取流量统计聚合数据失败:', error);
       throw new Error(`获取流量统计聚合数据失败: ${error.message}`);

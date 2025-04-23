@@ -12,14 +12,14 @@ interface CaptureParams {
 export class CaptureController {
   constructor(private readonly captureService: CaptureService) {}
 
-  @Get()
+  @Get('status')
   async getCaptureStatus() {
     return this.captureService.getCaptureStatus();
   }
 
   @Post('start')
-  async startCapture(@Body('interface') interfaceName: string) {
-    return this.captureService.startCapture(interfaceName);
+  async startCapture(@Body() body: { interface?: string }) {
+    return this.captureService.startCapture(body.interface);
   }
 
   @Post('stop')
@@ -28,22 +28,8 @@ export class CaptureController {
   }
 
   @Get('interfaces')
-  async getInterfaces() {
-    try {
-      const interfaces = await this.captureService.getAvailableInterfaces();
-      return { 
-        success: true, 
-        interfaces,
-        count: interfaces.length,
-        message: '成功获取网络接口列表'
-      };
-    } catch (error) {
-      return { 
-        success: false, 
-        message: `获取网络接口失败: ${error.message}`,
-        error: error.toString()
-      };
-    }
+  async getAvailableInterfaces() {
+    return { interfaces: await this.captureService.getAvailableInterfaces() };
   }
 
   @Post('test')
@@ -89,19 +75,54 @@ export class CaptureController {
   }
 
   @Get('latest')
-  async getLatestPackets(@Query('limit') limit: string = '20') {
+  async getLatestCapturedPackets(@Query('limit') limit: string = '100') {
+    const limitNum = parseInt(limit, 10) || 100;
+    return this.captureService.getLatestCapturedPackets(limitNum);
+  }
+
+  @Post('test-data')
+  async generateTestData() {
+    // 生成一些测试数据包，用于前端调试
+    const packets = [];
+    const now = new Date();
+    
+    // 生成100个测试数据包，时间跨度为最近30分钟
+    for (let i = 0; i < 100; i++) {
+      const timestamp = new Date(now.getTime() - (30 * 60 * 1000) + (i * 18000)); // 每18秒一个包
+      
+      packets.push({
+        timestamp,
+        sourceMac: '00:11:22:33:44:55',
+        destinationMac: '66:77:88:99:AA:BB',
+        sourceIp: `192.168.1.${Math.floor(Math.random() * 255)}`,
+        destinationIp: `10.0.0.${Math.floor(Math.random() * 255)}`,
+        protocol: ['TCP', 'UDP', 'HTTP', 'HTTPS', 'DNS'][Math.floor(Math.random() * 5)],
+        sourcePort: Math.floor(Math.random() * 65535),
+        destinationPort: [80, 443, 53, 8080, 22][Math.floor(Math.random() * 5)],
+        length: Math.floor(Math.random() * 1500) + 100,
+        tcpFlags: '0x0018',
+        payload: 'test payload',
+        applicationData: JSON.stringify({ test: 'data' }),
+        rawData: 'raw test data'
+      });
+    }
+    
+    // 存储到数据库
     try {
-      const packets = await this.captureService.getLatestCapturedPackets(parseInt(limit, 10));
+      // 使用Prisma批量创建记录
+      const result = await this.captureService['prisma'].packet.createMany({
+        data: packets,
+        skipDuplicates: true, // 跳过重复记录
+      });
+      
       return {
-        success: true,
-        count: packets.length,
-        packets
+        message: `成功生成 ${result.count} 条测试数据包`,
+        generatedCount: result.count,
+        totalPackets: await this.captureService['prisma'].packet.count()
       };
     } catch (error) {
       return {
-        success: false,
-        message: `获取最新数据包失败: ${error.message}`,
-        error: error.toString()
+        error: `生成测试数据失败: ${error.message}`
       };
     }
   }
