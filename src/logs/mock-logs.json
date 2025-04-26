@@ -1,0 +1,537 @@
+{
+  "logs": [
+    {
+      "id": 1,
+      "timestamp": "2023-06-01T08:00:00.000Z",
+      "logType": "SYSTEM_START",
+      "source": "system",
+      "message": "系统启动成功，监听端口: 5000",
+      "metadata": null,
+      "createdAt": "2023-06-01T08:00:00.000Z",
+      "updatedAt": "2023-06-01T08:00:00.000Z"
+    },
+    {
+      "id": 2,
+      "timestamp": "2023-06-01T08:00:05.000Z",
+      "logType": "INFO",
+      "source": "database",
+      "message": "数据库连接建立成功",
+      "metadata": {
+        "dbHost": "localhost",
+        "dbName": "monitoring_db"
+      },
+      "createdAt": "2023-06-01T08:00:05.000Z",
+      "updatedAt": "2023-06-01T08:00:05.000Z"
+    },
+    {
+      "id": 3,
+      "timestamp": "2023-06-01T08:01:00.000Z",
+      "logType": "API_ACCESS",
+      "source": "api",
+      "message": "GET /devices",
+      "metadata": {
+        "ip": "192.168.1.50",
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "duration": 25
+      },
+      "createdAt": "2023-06-01T08:01:00.000Z",
+      "updatedAt": "2023-06-01T08:01:00.000Z"
+    },
+    {
+      "id": 4,
+      "timestamp": "2023-06-01T08:05:30.000Z",
+      "logType": "WARNING",
+      "source": "network",
+      "message": "网络延迟超过阈值",
+      "metadata": {
+        "latency": 230,
+        "threshold": 200,
+        "interface": "eth0"
+      },
+      "createdAt": "2023-06-01T08:05:30.000Z",
+      "updatedAt": "2023-06-01T08:05:30.000Z"
+    },
+    {
+      "id": 5,
+      "timestamp": "2023-06-01T08:10:15.000Z",
+      "logType": "ERROR",
+      "source": "capture",
+      "message": "数据包捕获失败",
+      "metadata": {
+        "errorCode": "PCAP_ERROR_PERM_DENIED",
+        "interface": "eth0",
+        "reason": "操作需要管理员权限"
+      },
+      "createdAt": "2023-06-01T08:10:15.000Z",
+      "updatedAt": "2023-06-01T08:10:15.000Z"
+    },
+    {
+      "id": 6,
+      "timestamp": "2023-06-01T08:15:00.000Z",
+      "logType": "API_ACCESS",
+      "source": "api",
+      "message": "POST /logs",
+      "metadata": {
+        "ip": "192.168.1.100",
+        "userAgent": "PostmanRuntime/7.29.0",
+        "duration": 12
+      },
+      "createdAt": "2023-06-01T08:15:00.000Z",
+      "updatedAt": "2023-06-01T08:15:00.000Z"
+    },
+    {
+      "id": 7,
+      "timestamp": "2023-06-01T08:20:45.000Z",
+      "logType": "INFO",
+      "source": "scheduler",
+      "message": "定时清理任务启动",
+      "metadata": {
+        "taskId": "cleanup-123",
+        "schedule": "0 0 * * *"
+      },
+      "createdAt": "2023-06-01T08:20:45.000Z",
+      "updatedAt": "2023-06-01T08:20:45.000Z"
+    },
+    {
+      "id": 8,
+      "timestamp": "2023-06-01T08:30:00.000Z",
+      "logType": "WARNING",
+      "source": "monitoring",
+      "message": "CPU使用率超过阈值",
+      "metadata": {
+        "cpu": 85,
+        "threshold": 80,
+        "duration": "5分钟"
+      },
+      "createdAt": "2023-06-01T08:30:00.000Z",
+      "updatedAt": "2023-06-01T08:30:00.000Z"
+    },
+    {
+      "id": 9,
+      "timestamp": "2023-06-01T08:45:10.000Z",
+      "logType": "API_ACCESS",
+      "source": "api",
+      "message": "GET /metrics",
+      "metadata": {
+        "ip": "192.168.1.50",
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "duration": 18
+      },
+      "createdAt": "2023-06-01T08:45:10.000Z",
+      "updatedAt": "2023-06-01T08:45:10.000Z"
+    },
+    {
+      "id": 10,
+      "timestamp": "2023-06-01T09:00:00.000Z",
+      "logType": "INFO",
+      "source": "system",
+      "message": "系统资源使用情况报告",
+      "metadata": {
+        "cpu": 45,
+        "memory": 60,
+        "disk": 35,
+        "network": {
+          "in": 1200,
+          "out": 800
+        }
+      },
+      "createdAt": "2023-06-01T09:00:00.000Z",
+      "updatedAt": "2023-06-01T09:00:00.000Z"
+    }
+  ],
+  "typeStats": [
+    {
+      "type": "API_ACCESS",
+      "count": 25,
+      "percentage": 32.5
+    },
+    {
+      "type": "INFO",
+      "count": 18,
+      "percentage": 23.4
+    },
+    {
+      "type": "WARNING",
+      "count": 15,
+      "percentage": 19.5
+    },
+    {
+      "type": "ERROR",
+      "count": 12,
+      "percentage": 15.6
+    },
+    {
+      "type": "SYSTEM_START",
+      "count": 5,
+      "percentage": 6.5
+    },
+    {
+      "type": "SYSTEM_STOP",
+      "count": 2,
+      "percentage": 2.6
+    }
+  ],
+  "sourceStats": [
+    {
+      "source": "api",
+      "count": 30,
+      "percentage": 39.0
+    },
+    {
+      "source": "system",
+      "count": 15,
+      "percentage": 19.5
+    },
+    {
+      "source": "monitoring",
+      "count": 10,
+      "percentage": 13.0
+    },
+    {
+      "source": "database",
+      "count": 8,
+      "percentage": 10.4
+    },
+    {
+      "source": "network",
+      "count": 7,
+      "percentage": 9.1
+    },
+    {
+      "source": "capture",
+      "count": 5,
+      "percentage": 6.5
+    },
+    {
+      "source": "scheduler",
+      "count": 2,
+      "percentage": 2.6
+    }
+  ],
+  "timeStats": [
+    {
+      "time": "2023-06-01T08:00:00.000Z",
+      "errorCount": 0,
+      "warningCount": 0,
+      "infoCount": 2,
+      "apiCount": 0,
+      "systemCount": 1,
+      "totalCount": 2
+    },
+    {
+      "time": "2023-06-01T09:00:00.000Z",
+      "errorCount": 0,
+      "warningCount": 0,
+      "infoCount": 1,
+      "apiCount": 0,
+      "systemCount": 1,
+      "totalCount": 1
+    },
+    {
+      "time": "2023-06-01T10:00:00.000Z",
+      "errorCount": 1,
+      "warningCount": 2,
+      "infoCount": 3,
+      "apiCount": 4,
+      "systemCount": 0,
+      "totalCount": 6
+    },
+    {
+      "time": "2023-06-01T11:00:00.000Z",
+      "errorCount": 2,
+      "warningCount": 1,
+      "infoCount": 2,
+      "apiCount": 3,
+      "systemCount": 0,
+      "totalCount": 5
+    },
+    {
+      "time": "2023-06-01T12:00:00.000Z",
+      "errorCount": 1,
+      "warningCount": 3,
+      "infoCount": 2,
+      "apiCount": 4,
+      "systemCount": 0,
+      "totalCount": 6
+    },
+    {
+      "time": "2023-06-01T13:00:00.000Z",
+      "errorCount": 3,
+      "warningCount": 2,
+      "infoCount": 1,
+      "apiCount": 5,
+      "systemCount": 0,
+      "totalCount": 6
+    },
+    {
+      "time": "2023-06-01T14:00:00.000Z",
+      "errorCount": 2,
+      "warningCount": 3,
+      "infoCount": 3,
+      "apiCount": 6,
+      "systemCount": 0,
+      "totalCount": 8
+    },
+    {
+      "time": "2023-06-01T15:00:00.000Z",
+      "errorCount": 1,
+      "warningCount": 2,
+      "infoCount": 2,
+      "apiCount": 3,
+      "systemCount": 0,
+      "totalCount": 5
+    },
+    {
+      "time": "2023-06-01T16:00:00.000Z",
+      "errorCount": 0,
+      "warningCount": 1,
+      "infoCount": 2,
+      "apiCount": 2,
+      "systemCount": 0,
+      "totalCount": 3
+    },
+    {
+      "time": "2023-06-01T17:00:00.000Z",
+      "errorCount": 2,
+      "warningCount": 1,
+      "infoCount": 0,
+      "apiCount": 3,
+      "systemCount": 0,
+      "totalCount": 3
+    },
+    {
+      "time": "2023-06-01T18:00:00.000Z",
+      "errorCount": 0,
+      "warningCount": 0,
+      "infoCount": 0,
+      "apiCount": 0,
+      "systemCount": 0,
+      "totalCount": 0
+    },
+    {
+      "time": "2023-06-01T19:00:00.000Z",
+      "errorCount": 0,
+      "warningCount": 0,
+      "infoCount": 0,
+      "apiCount": 0,
+      "systemCount": 1,
+      "totalCount": 1
+    }
+  ],
+  "extendedLogs": [
+    {
+      "id": 11,
+      "timestamp": "2023-06-01T09:15:00.000Z",
+      "logType": "API_ACCESS",
+      "source": "api",
+      "message": "GET /traffic/stats",
+      "metadata": {
+        "ip": "192.168.1.55",
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+        "duration": 35
+      },
+      "createdAt": "2023-06-01T09:15:00.000Z",
+      "updatedAt": "2023-06-01T09:15:00.000Z"
+    },
+    {
+      "id": 12,
+      "timestamp": "2023-06-01T09:30:00.000Z",
+      "logType": "ERROR",
+      "source": "database",
+      "message": "数据库查询超时",
+      "metadata": {
+        "query": "SELECT * FROM traffic_data WHERE timestamp > ?",
+        "timeout": 5000,
+        "params": ["2023-05-31T00:00:00.000Z"]
+      },
+      "createdAt": "2023-06-01T09:30:00.000Z",
+      "updatedAt": "2023-06-01T09:30:00.000Z"
+    },
+    {
+      "id": 13,
+      "timestamp": "2023-06-01T09:45:00.000Z",
+      "logType": "WARNING",
+      "source": "monitoring",
+      "message": "内存使用率超过阈值",
+      "metadata": {
+        "memory": 85,
+        "threshold": 80,
+        "duration": "10分钟"
+      },
+      "createdAt": "2023-06-01T09:45:00.000Z",
+      "updatedAt": "2023-06-01T09:45:00.000Z"
+    },
+    {
+      "id": 14,
+      "timestamp": "2023-06-01T10:00:00.000Z",
+      "logType": "INFO",
+      "source": "scheduler",
+      "message": "备份任务完成",
+      "metadata": {
+        "taskId": "backup-456",
+        "fileSize": "235MB",
+        "destination": "/backups/db-2023-06-01.bak"
+      },
+      "createdAt": "2023-06-01T10:00:00.000Z",
+      "updatedAt": "2023-06-01T10:00:00.000Z"
+    },
+    {
+      "id": 15,
+      "timestamp": "2023-06-01T10:15:00.000Z",
+      "logType": "API_ACCESS",
+      "source": "api",
+      "message": "POST /analysis/scan",
+      "metadata": {
+        "ip": "192.168.1.60",
+        "userAgent": "curl/7.64.1",
+        "duration": 150,
+        "payloadSize": "1.2MB"
+      },
+      "createdAt": "2023-06-01T10:15:00.000Z",
+      "updatedAt": "2023-06-01T10:15:00.000Z"
+    },
+    {
+      "id": 16,
+      "timestamp": "2023-06-01T10:30:00.000Z",
+      "logType": "ERROR",
+      "source": "capture",
+      "message": "数据包解析错误",
+      "metadata": {
+        "packetId": "1a2b3c4d",
+        "protocol": "TCP",
+        "reason": "不完整的包头"
+      },
+      "createdAt": "2023-06-01T10:30:00.000Z",
+      "updatedAt": "2023-06-01T10:30:00.000Z"
+    },
+    {
+      "id": 17,
+      "timestamp": "2023-06-01T10:45:00.000Z",
+      "logType": "WARNING",
+      "source": "network",
+      "message": "高流量检测",
+      "metadata": {
+        "interface": "eth0",
+        "bytesPerSec": 15000000,
+        "threshold": 10000000
+      },
+      "createdAt": "2023-06-01T10:45:00.000Z",
+      "updatedAt": "2023-06-01T10:45:00.000Z"
+    },
+    {
+      "id": 18,
+      "timestamp": "2023-06-01T11:00:00.000Z",
+      "logType": "INFO",
+      "source": "system",
+      "message": "服务状态检查",
+      "metadata": {
+        "services": {
+          "capture": "running",
+          "analysis": "running",
+          "database": "running",
+          "web": "running"
+        }
+      },
+      "createdAt": "2023-06-01T11:00:00.000Z",
+      "updatedAt": "2023-06-01T11:00:00.000Z"
+    },
+    {
+      "id": 19,
+      "timestamp": "2023-06-01T11:15:00.000Z",
+      "logType": "API_ACCESS",
+      "source": "api",
+      "message": "GET /devices/status",
+      "metadata": {
+        "ip": "192.168.1.70",
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "duration": 42
+      },
+      "createdAt": "2023-06-01T11:15:00.000Z",
+      "updatedAt": "2023-06-01T11:15:00.000Z"
+    },
+    {
+      "id": 20,
+      "timestamp": "2023-06-01T11:30:00.000Z",
+      "logType": "ERROR",
+      "source": "analysis",
+      "message": "异常检测模型加载失败",
+      "metadata": {
+        "modelId": "anomaly-v2",
+        "reason": "文件已损坏",
+        "path": "/models/anomaly-v2.bin"
+      },
+      "createdAt": "2023-06-01T11:30:00.000Z",
+      "updatedAt": "2023-06-01T11:30:00.000Z"
+    },
+    {
+      "id": 21,
+      "timestamp": "2023-06-01T11:45:00.000Z",
+      "logType": "WARNING",
+      "source": "database",
+      "message": "数据库磁盘空间不足",
+      "metadata": {
+        "available": "512MB",
+        "threshold": "1GB",
+        "path": "/var/lib/postgresql/data"
+      },
+      "createdAt": "2023-06-01T11:45:00.000Z",
+      "updatedAt": "2023-06-01T11:45:00.000Z"
+    },
+    {
+      "id": 22,
+      "timestamp": "2023-06-01T12:00:00.000Z",
+      "logType": "INFO",
+      "source": "capture",
+      "message": "捕获会话开始",
+      "metadata": {
+        "sessionId": "cap-20230601-001",
+        "interface": "eth0",
+        "filter": "port 80 or port 443"
+      },
+      "createdAt": "2023-06-01T12:00:00.000Z",
+      "updatedAt": "2023-06-01T12:00:00.000Z"
+    },
+    {
+      "id": 23,
+      "timestamp": "2023-06-01T12:15:00.000Z",
+      "logType": "API_ACCESS",
+      "source": "api",
+      "message": "POST /topology/update",
+      "metadata": {
+        "ip": "192.168.1.80",
+        "userAgent": "Python-requests/2.28.1",
+        "duration": 120,
+        "devices": 25
+      },
+      "createdAt": "2023-06-01T12:15:00.000Z",
+      "updatedAt": "2023-06-01T12:15:00.000Z"
+    },
+    {
+      "id": 24,
+      "timestamp": "2023-06-01T12:30:00.000Z",
+      "logType": "ERROR",
+      "source": "monitoring",
+      "message": "监控API调用失败",
+      "metadata": {
+        "endpoint": "/api/v1/metrics",
+        "statusCode": 503,
+        "retry": 3
+      },
+      "createdAt": "2023-06-01T12:30:00.000Z",
+      "updatedAt": "2023-06-01T12:30:00.000Z"
+    },
+    {
+      "id": 25,
+      "timestamp": "2023-06-01T19:00:00.000Z",
+      "logType": "SYSTEM_STOP",
+      "source": "system",
+      "message": "系统正常关闭",
+      "metadata": {
+        "uptime": "11h00m",
+        "reason": "管理员请求"
+      },
+      "createdAt": "2023-06-01T19:00:00.000Z",
+      "updatedAt": "2023-06-01T19:00:00.000Z"
+    }
+  ]
+} 

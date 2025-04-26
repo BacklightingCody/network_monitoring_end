@@ -1,8 +1,9 @@
-import { Module } from '@nestjs/common';
+import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { DevicesModule } from '@/devices/devices.module';
 import { TrafficModule } from '@/traffic/traffic.module';
 import { LogsModule } from '@/logs/logs.module';
+import { LoggingMiddleware } from '@/logs/logs.middleware';
 import { PerformanceInterceptor } from '@/common/interceptors/performance.interceptor';
 import { AllExceptionsFilter } from '@/common/filters/all-exceptions.filter';
 import { ResponseInterceptor } from '@/common/interceptors/response.interceptor';
@@ -66,4 +67,9 @@ if (IS_DEV) {
     }
   ],
 })
-export class AppModule { }
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    // 应用LoggingMiddleware到所有路由
+    consumer.apply(LoggingMiddleware).forRoutes('*');
+  }
+}

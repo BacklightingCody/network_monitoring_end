@@ -68,3 +68,15 @@ model Anomaly {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
+
+// 系统日志表
+model SystemLog {
+  id          Int      @id @default(autoincrement())
+  timestamp   DateTime @default(now())
+  logType     String   // SYSTEM_START, SYSTEM_STOP, API_ACCESS, ERROR, WARNING 等
+  source      String   // 日志来源模块
+  message     String   // 日志消息
+  metadata    Json?    // 附加信息
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

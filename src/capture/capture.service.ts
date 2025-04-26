@@ -401,13 +401,13 @@ export class CaptureService implements OnModuleInit {
           skipDuplicates: true, // 跳过重复记录
         });
 
-        console.log(`已存储 ${result.count} 个数据包`);
+        // console.log(`已存储 ${result.count} 个数据包`);
         
         // 如果存储数量与期望不符，记录警告
         if (result.count < formattedPackets.length) {
           console.warn(`部分数据包未能存储: ${formattedPackets.length - result.count}个被跳过`);
         }
-        console.log(`成功保存 ${result.count} 条数据包到数据库`);
+        // console.log(`成功保存 ${result.count} 条数据包到数据库`);
         return result.count;
       } catch (error) {
         retryCount++;
@@ -938,9 +938,9 @@ export class CaptureService implements OnModuleInit {
       const dataStr = data.toString().trim();
       
       // 调试日志 - 确认接收到数据
-      console.log(`接收到tshark数据: ${dataStr.length} 字节`);
+      // console.log(`接收到tshark数据: ${dataStr.length} 字节`);
       if (dataStr.length > 0 && process.env.RUNNING_ENV === 'dev') {
-        console.log(`数据预览: ${dataStr.substring(0, 100)}...`);
+        // console.log(`数据预览: ${dataStr.substring(0, 100)}...`);
       }
 
       // 如果数据为空，则直接返回
@@ -1124,7 +1124,7 @@ export class CaptureService implements OnModuleInit {
           this.jsonBuffer = this.jsonBuffer.substring(this.jsonBuffer.length - 50000);
         }
         
-        console.log(`JSON缓冲区处理: 成功 ${processedCount} 条, 失败 ${errorCount} 条, 缓冲区大小: ${this.jsonBuffer.length}`);
+        // console.log(`JSON缓冲区处理: 成功 ${processedCount} 条, 失败 ${errorCount} 条, 缓冲区大小: ${this.jsonBuffer.length}`);
       }
     } catch (error) {
       console.error(`处理JSON缓冲区错误: ${error.message}`);
@@ -1144,16 +1144,16 @@ export class CaptureService implements OnModuleInit {
       
       // 输出解析后的数据包
       if (process.env.RUNNING_ENV === 'dev') {
-        console.log(
-          `解析数据包: ${packet.sourceIp}:${packet.sourcePort} -> ${packet.destinationIp}:${packet.destinationPort} (${packet.protocol})`
-        );
+        // console.log(
+        //   `解析数据包: ${packet.sourceIp}:${packet.sourcePort} -> ${packet.destinationIp}:${packet.destinationPort} (${packet.protocol})`
+        // );
       }
       
       // 保存到数据库
       this.storeBatch([packet])
         .then((count) => {
           if (count > 0 && process.env.RUNNING_ENV === 'dev') {
-            console.log(`成功保存数据包: ${packet.sourceIp} -> ${packet.destinationIp}`);
+            // console.log(`成功保存数据包: ${packet.sourceIp} -> ${packet.destinationIp}`);
           }
         })
         .catch(error => {
